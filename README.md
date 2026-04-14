@@ -12,6 +12,12 @@ weight report against the 77 g budget.
 
 ## The Rocket
 
+![Assembled rocket](images/assembly.png)
+
+Full step-by-step build in [`ASSEMBLY.md`](ASSEMBLY.md).
+
+### Parts
+
 ![Nose Cone](images/nose_cone.png)
 ![Body Tube](images/body_tube.png)
 ![Fin Can](images/fin_can.png)
@@ -24,7 +30,8 @@ weight report against the 77 g budget.
 | **Nose cone** | Tangent ogive, 76.2 mm long, 2 mm wall, internal shock-cord eyelet |
 | **Fins** | 4× trapezoidal, 63.5 mm root × 31.75 mm tip × 40.64 mm span × 3.81 mm thick |
 | **Motor mount** | 18.5 mm ID × 72 mm, integrated retainer lip |
-| **Rail guides** | 2× reinforced mushroom buttons at 45° between fins |
+| **Rail guides** | 2× 1010-T-slot-compatible buttons (5.0 mm stem / 7.5 mm head) at 45° between fins |
+| **Fin retention** | Keyway slide-lock — tabs with aft-end wings, captured under narrow slot section after 8 mm forward slide |
 | **Motor** | Estes C6-5 (14.1 N peak, 1.9 s burn) |
 | **Weight budget** | 77 g printed (after 12 g recovery gear) |
 
@@ -37,13 +44,15 @@ weight report against the 77 g budget.
 | `stl/fin_can.stl`   | Motor mount, 2 centering rings, fin capture slots, retainer lip, friction collar | vertical |
 | `stl/fin.stl`       | Single fin with through-wall tab — print **4×** | flat |
 
-### Assembly (no glue)
+### Assembly (no glue) — short version
 
-1. Slide 4 fins through the body tube fin slots; tabs seat into the fin can pockets.
-2. Press the fin can shoulder up into the aft end of the body tube (friction fit).
-3. Thread the shock cord through the nose cone's internal eyelet bridge and tie off.
+1. Friction-fit the fin can up into the aft end of the body tube, aligning slots.
+2. For each fin: align wings with the **keyhole pocket** at the bottom of a body tube slot, press the tab inward, then **slide the fin ~8 mm forward** so the wings are captured under the narrow slot section.
+3. Thread the shock cord through the nose cone's internal bridge and tie off.
 4. Pack parachute + wadding, friction-fit the nose cone.
 5. Load the Estes C6-5 into the motor mount until it seats against the retainer lip.
+
+Full walkthrough with per-step notes: [`ASSEMBLY.md`](ASSEMBLY.md).
 
 ### Weight report (from `rocket.py`)
 
@@ -158,18 +167,38 @@ aligned with `+X` — but the fin slots span 2 – 66 mm aft and sit at 0 / 90 /
 pad that sinks 0.6 mm into the tube wall so the button-to-tube junction
 doesn't snap off.
 
-### Known simplifications
+### Revisions after first review
 
-These are called out explicitly so a future revision can address them:
+A follow-up design pass addressed three of the flagged gaps:
 
-- **Fin can retention** is a plain friction collar, not the bayonet / snap
-  ring the original spec called for. Fine for a sport flyer under a C6-5;
-  not ideal under higher impulses.
-- **Rail guide** is a simplified mushroom button, not a true 1010 T-slot
-  profile. Works on a round launch rod; loose on an actual 80/20 1010 rail.
-- **Body tube wall** is 1.27 mm (derived from OD 27.94 / ID 25.40), not the
-  2.27 mm called out in the handoff prose. Trusted the OD/ID pair; worth
-  revisiting if more wall stiffness is wanted.
+**Fin retention — keyway slide-lock (resolved).** The original first-pass
+fin tab was a plain 2.54 mm rectangle with no mechanical retention — a
+reviewer (correctly) pointed out nothing kept the fins in under load.
+The tab is now **3.0 mm deep** with **1.5 mm-per-side wings** at the aft
+8 mm, and each body tube fin slot is a **keyhole**: 8 mm wide pocket at
+the aft end, narrow channel above. Assembly is push-in + 8 mm forward
+slide; once slid, the wings are trapped under the narrow section and
+the fin cannot be pulled radially outward. See `ASSEMBLY.md` step 2.
+
+**Rail guide — updated to 1010 T-slot profile (resolved).** Buttons are
+now 5.0 mm stem × 7.5 mm head × 2.5 mm head thickness, which fits the
+standard 80/20 1010 T-slot (6.40 mm surface opening, 8.26 mm interior
+cavity). Reinforcement pad retained.
+
+### Known simplifications (still outstanding)
+
+- **Fin can → body tube retention** is still a plain friction collar,
+  not the bayonet / snap ring the original spec called for. Fine for a
+  sport flyer under a C6-5 (thrust pushes the fin can *up* into the
+  body tube, not out), but a proper bayonet would be right for higher
+  impulses. Deferred intentionally — the L-slot geometry on a 1.27 mm
+  wall is fiddly and I'd rather test-fit a prototype before committing.
+- **Body tube wall** is 1.27 mm (derived from OD 27.94 / ID 25.40), not
+  the 2.27 mm called out in the handoff prose. The OD/ID pair is what
+  makes every internal fit (nose cone shoulder, fin can collar, motor
+  mount clearance) work, so trusted that over the wall-thickness
+  figure. Worth revisiting if more stiffness is wanted — would need to
+  either expand OD or accept a tighter internal fit.
 
 ---
 
@@ -179,8 +208,10 @@ These are called out explicitly so a future revision can address them:
 .
 ├── rocket.py                     # the whole parametric model
 ├── rocket_project_handoff.md     # original design spec
+├── ASSEMBLY.md                   # step-by-step build instructions
 ├── scripts/
-│   └── render_parts.py           # STL → PNG thumbnails
+│   ├── render_parts.py           # STL → PNG thumbnails
+│   └── render_assembly.py        # composite assembled view
 ├── stl/                          # generated STLs (committed for convenience)
 │   ├── nose_cone.stl
 │   ├── body_tube.stl
