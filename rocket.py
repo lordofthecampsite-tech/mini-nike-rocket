@@ -64,20 +64,21 @@ FIN_SWEEP = -5.0        # tip LE 5mm forward of root LE
 FIN_THK = 3.81
 FIN_TAB_DEPTH = 3.0                 # radial depth of main tab
 FIN_TAB_LEN = FIN_ROOT              # tab spans full root chord
-FIN_TAB_WING_LEN = 8.0              # axial length of wings at aft end of tab
+FIN_TAB_WING_LEN = 8.0              # axial length of wings at each end of tab
 FIN_TAB_WING_EXTRA = 1.5            # per-side extra circumferential width
 FIN_TAB_WING_TOP = 1.5              # wings start 1.5mm below root (= ~0.3mm below BT inner wall)
 FIN_COUNT = 4
 
-# Fin slot (body tube): aft keyhole to accept wings + narrow channel.
-# After inserting, slide fin 8mm forward to move wings under the narrow
-# section, capturing them radially.
-SLOT_SLIDE = FIN_TAB_WING_LEN                   # 8mm forward slide to lock
+# Fin slot (body tube): keyhole at BOTH ends + narrow middle.
+# Assembly is push-in only — both pairs of wings enter the two keyhole
+# pockets simultaneously, and the main tab rides in the narrow middle.
+# Wings are wider than the narrow section, so the fin cannot translate
+# axially in either direction.
 SLOT_NARROW_W = FIN_THK + 0.3                   # 4.11mm
 SLOT_KEYHOLE_W = FIN_THK + 2 * FIN_TAB_WING_EXTRA + 0.4  # 7.21mm
-SLOT_KEYHOLE_LEN = FIN_TAB_WING_LEN             # 8mm at aft
-SLOT_NARROW_LEN = FIN_TAB_LEN                   # 63.5mm
-SLOT_TOTAL_LEN = SLOT_KEYHOLE_LEN + SLOT_NARROW_LEN  # 71.5mm
+SLOT_KEYHOLE_LEN = FIN_TAB_WING_LEN             # 8mm each end
+SLOT_NARROW_LEN = FIN_TAB_LEN - 2 * FIN_TAB_WING_LEN  # 47.5mm
+SLOT_TOTAL_LEN = FIN_TAB_LEN                    # 63.5mm — matches tab length
 SLOT_AFT_OFFSET = 2.0                           # slot starts 2mm above aft edge
 
 # Rail guides — 1010-T-slot-compatible dimensions.
@@ -222,29 +223,31 @@ def build_body_tube() -> Part:
                 # starts at x=BT_ID/2-0.5 and extends outward.
             # The above isn't location-aware inside the existing context.
         # Simpler: subtract slots with explicit loft / box at known position
-    # Fin slots: keyhole at aft + narrow channel that captures the wings.
+    # Fin slots: keyhole pocket at each end + narrow middle channel.
     bt_part = bt.part
-    radial_cut_depth = 4.0  # punch well through the 1.27mm wall
-    keyhole_z0 = SLOT_AFT_OFFSET
-    keyhole_z1 = SLOT_AFT_OFFSET + SLOT_KEYHOLE_LEN
-    narrow_z0 = keyhole_z1
+    radial_cut_depth = 4.0
+    aft_key_z0 = SLOT_AFT_OFFSET
+    aft_key_z1 = aft_key_z0 + SLOT_KEYHOLE_LEN
+    narrow_z0 = aft_key_z1
     narrow_z1 = narrow_z0 + SLOT_NARROW_LEN
+    fwd_key_z0 = narrow_z1
+    fwd_key_z1 = fwd_key_z0 + SLOT_KEYHOLE_LEN
 
     for i in range(FIN_COUNT):
         angle = i * 360.0 / FIN_COUNT
-        # Keyhole section (wider): z=[keyhole_z0, keyhole_z1]
-        with BuildPart() as key:
-            Box(radial_cut_depth, SLOT_KEYHOLE_W, SLOT_KEYHOLE_LEN)
-        key_placed = Pos(BT_OD / 2.0, 0, (keyhole_z0 + keyhole_z1) / 2.0) * key.part
-        key_placed = key_placed.rotate(Axis.Z, angle)
-        bt_part = bt_part - key_placed
 
-        # Narrow channel: z=[narrow_z0, narrow_z1]
-        with BuildPart() as narrow:
-            Box(radial_cut_depth, SLOT_NARROW_W, SLOT_NARROW_LEN)
-        narrow_placed = Pos(BT_OD / 2.0, 0, (narrow_z0 + narrow_z1) / 2.0) * narrow.part
-        narrow_placed = narrow_placed.rotate(Axis.Z, angle)
-        bt_part = bt_part - narrow_placed
+        def _cut(length, width, z_center):
+            with BuildPart() as box:
+                Box(radial_cut_depth, width, length)
+            placed = Pos(BT_OD / 2.0, 0, z_center) * box.part
+            return placed.rotate(Axis.Z, angle)
+
+        bt_part = bt_part - _cut(SLOT_KEYHOLE_LEN, SLOT_KEYHOLE_W,
+                                 (aft_key_z0 + aft_key_z1) / 2.0)
+        bt_part = bt_part - _cut(SLOT_NARROW_LEN, SLOT_NARROW_W,
+                                 (narrow_z0 + narrow_z1) / 2.0)
+        bt_part = bt_part - _cut(SLOT_KEYHOLE_LEN, SLOT_KEYHOLE_W,
+                                 (fwd_key_z0 + fwd_key_z1) / 2.0)
 
     # Rail guides: reinforced mushroom button on a reinforcement pad,
     # placed at 45° between fins so they never land on a fin slot.
@@ -359,13 +362,17 @@ def build_fin() -> Part:
     body tube slot and capture the fin radially after an 8mm slide-forward."""
     with BuildPart() as fin:
         # Main fin body (flat on print bed, extruded in Z = thickness).
+        # Align.NONE on x preserves the polygon's natural coordinates so the
+        # root stays at x=[0, FIN_ROOT] and the tab below (also x=[0, FIN_ROOT])
+        # sits directly under the root. Without this, the default CENTER align
+        # would center the swept polygon on the origin and misalign the tab.
         with BuildSketch(Plane.XY):
             Polygon(
                 (0.0, 0.0),
                 (FIN_ROOT, 0.0),
                 (FIN_SWEEP + FIN_TIP, FIN_SPAN),
                 (FIN_SWEEP, FIN_SPAN),
-                align=(Align.MIN, Align.MIN),
+                align=(Align.NONE, Align.NONE),
             )
         extrude(amount=FIN_THK)
 
@@ -382,40 +389,41 @@ def build_fin() -> Part:
             make_face()
         extrude(amount=FIN_THK)
 
-        # Wings: two ears that extend ±Z beyond the fin thickness,
-        # sitting at the aft 8mm of the tab and below FIN_TAB_WING_TOP.
-        # After the fin is slid forward 8mm, these sit below the narrow
-        # portion of the body-tube slot and trap the fin radially.
+        # Wings: two pairs of ears that extend ±Z beyond the fin thickness,
+        # sitting at the aft 8mm AND forward 8mm of the tab, below
+        # FIN_TAB_WING_TOP. Matches keyhole pockets at both ends of the
+        # body-tube slot; fin is pinned axially between them.
         wing_y0 = -FIN_TAB_DEPTH
         wing_y1 = -FIN_TAB_WING_TOP
-        wing_x0 = 0.0
-        wing_x1 = FIN_TAB_WING_LEN
+        aft_x0, aft_x1 = 0.0, FIN_TAB_WING_LEN
+        fwd_x0, fwd_x1 = FIN_TAB_LEN - FIN_TAB_WING_LEN, FIN_TAB_LEN
 
-        # Top-side wing (+Z of fin face).
-        with BuildSketch(Plane.XY.offset(FIN_THK)):
-            with BuildLine():
-                Polyline(
-                    (wing_x0, wing_y0),
-                    (wing_x0, wing_y1),
-                    (wing_x1, wing_y1),
-                    (wing_x1, wing_y0),
-                    (wing_x0, wing_y0),
-                )
-            make_face()
-        extrude(amount=FIN_TAB_WING_EXTRA)
+        for (x0, x1) in ((aft_x0, aft_x1), (fwd_x0, fwd_x1)):
+            # Top-side wing (+Z past fin face).
+            with BuildSketch(Plane.XY.offset(FIN_THK)):
+                with BuildLine():
+                    Polyline(
+                        (x0, wing_y0),
+                        (x0, wing_y1),
+                        (x1, wing_y1),
+                        (x1, wing_y0),
+                        (x0, wing_y0),
+                    )
+                make_face()
+            extrude(amount=FIN_TAB_WING_EXTRA)
 
-        # Bottom-side wing (−Z of fin face).
-        with BuildSketch(Plane.XY):
-            with BuildLine():
-                Polyline(
-                    (wing_x0, wing_y0),
-                    (wing_x0, wing_y1),
-                    (wing_x1, wing_y1),
-                    (wing_x1, wing_y0),
-                    (wing_x0, wing_y0),
-                )
-            make_face()
-        extrude(amount=-FIN_TAB_WING_EXTRA)
+            # Bottom-side wing (−Z past fin face).
+            with BuildSketch(Plane.XY):
+                with BuildLine():
+                    Polyline(
+                        (x0, wing_y0),
+                        (x0, wing_y1),
+                        (x1, wing_y1),
+                        (x1, wing_y0),
+                        (x0, wing_y0),
+                    )
+                make_face()
+            extrude(amount=-FIN_TAB_WING_EXTRA)
 
     return fin.part
 

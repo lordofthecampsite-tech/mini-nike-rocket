@@ -31,7 +31,7 @@ Full step-by-step build in [`ASSEMBLY.md`](ASSEMBLY.md).
 | **Fins** | 4× trapezoidal, 63.5 mm root × 31.75 mm tip × 40.64 mm span × 3.81 mm thick |
 | **Motor mount** | 18.5 mm ID × 72 mm, integrated retainer lip |
 | **Rail guides** | 2× 1010-T-slot-compatible buttons (5.0 mm stem / 7.5 mm head) at 45° between fins |
-| **Fin retention** | Keyway slide-lock — tabs with aft-end wings, captured under narrow slot section after 8 mm forward slide |
+| **Fin retention** | Dual-keyhole push-lock — tabs with wings at both ends; wings enter keyhole pockets at both ends of the slot simultaneously and are pinned by the narrow section between them |
 | **Motor** | Estes C6-5 (14.1 N peak, 1.9 s burn) |
 | **Weight budget** | 77 g printed (after 12 g recovery gear) |
 
@@ -47,7 +47,7 @@ Full step-by-step build in [`ASSEMBLY.md`](ASSEMBLY.md).
 ### Assembly (no glue) — short version
 
 1. Friction-fit the fin can up into the aft end of the body tube, aligning slots.
-2. For each fin: align wings with the **keyhole pocket** at the bottom of a body tube slot, press the tab inward, then **slide the fin ~8 mm forward** so the wings are captured under the narrow slot section.
+2. For each fin: align the two pairs of wings with the two **keyhole pockets** at each end of a body tube slot and press the tab straight inward. The wings drop into both pockets at once and the narrow middle section captures them — no slide required, the fin is pinned axially in both directions.
 3. Thread the shock cord through the nose cone's internal bridge and tie off.
 4. Pack parachute + wadding, friction-fit the nose cone.
 5. Load the Estes C6-5 into the motor mount until it seats against the retainer lip.
@@ -171,14 +171,16 @@ doesn't snap off.
 
 A follow-up design pass addressed three of the flagged gaps:
 
-**Fin retention — keyway slide-lock (resolved).** The original first-pass
+**Fin retention — dual-keyhole push-lock (resolved).** The original first-pass
 fin tab was a plain 2.54 mm rectangle with no mechanical retention — a
 reviewer (correctly) pointed out nothing kept the fins in under load.
-The tab is now **3.0 mm deep** with **1.5 mm-per-side wings** at the aft
-8 mm, and each body tube fin slot is a **keyhole**: 8 mm wide pocket at
-the aft end, narrow channel above. Assembly is push-in + 8 mm forward
-slide; once slid, the wings are trapped under the narrow section and
-the fin cannot be pulled radially outward. See `ASSEMBLY.md` step 2.
+The tab is now **3.0 mm deep** with **1.5 mm-per-side wings** at *both*
+ends (aft 8 mm and forward 8 mm), and each body tube fin slot is a
+**dual keyhole**: 8 mm wide pockets at both ends with a narrow channel
+between them. Assembly is a straight push-in — both pairs of wings drop
+into both pockets simultaneously, and the narrow middle pins the fin
+axially in both directions (no forward slide required, and nothing to
+slide back out under rearward load). See `ASSEMBLY.md` step 2.
 
 **Rail guide — updated to 1010 T-slot profile (resolved).** Buttons are
 now 5.0 mm stem × 7.5 mm head × 2.5 mm head thickness, which fits the
