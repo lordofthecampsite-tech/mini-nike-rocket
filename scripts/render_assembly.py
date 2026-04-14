@@ -63,34 +63,24 @@ def build_assembly() -> list[tuple[np.ndarray, np.ndarray]]:
     fc = load_stl(f"{stl}/fin_can.stl")
     fc = transform(fc, translate=(0, 0, R.RETAINER_LIP_THK))
     parts.append((fc, fc_gray))
-    # Four fins: fin was printed flat (thickness in Z). Orient vertical,
-    # slide forward to locked position (wings fully under narrow slot).
-    # Locked root position on body tube: z in [keyhole_z1, keyhole_z1+FIN_ROOT]
-    root_z0 = R.SLOT_AFT_OFFSET + R.SLOT_KEYHOLE_LEN
+    # Four fins. Fin local frame: x=chord (LE=0, TE=FIN_ROOT), y=span
+    # (tab=−FIN_TAB_DEPTH, tip=+FIN_SPAN), z=thickness (0..FIN_THK).
+    # Rocket frame: +Z is up toward nose. Fin root TE should sit at
+    # rocket_z=SLOT_AFT_OFFSET (slot's aft edge) and root LE at
+    # SLOT_AFT_OFFSET+FIN_ROOT (toward nose).
     for i in range(R.FIN_COUNT):
         fin = load_stl(f"{stl}/fin.stl")
-        # In fin local frame:
-        #   x = chord (0..FIN_ROOT at root)
-        #   y = span (−tab_depth..+FIN_SPAN)
-        #   z = thickness (−wing..FIN_THK+wing)
-        # Target placement: fin lies radially outward from body tube, root on
-        # the outer surface at body tube azimuth = i*90°.
-        # Step 1: rotate about X by −90° so +Y in fin becomes +Z outward...
-        # Actually we want fin chord along rocket Z axis and fin span along
-        # rocket radial (+X before azimuth rotation). So:
-        #   fin x (chord)    → rocket +Z  (axial)
-        #   fin y (span/tab) → rocket +X  (radial out) for y>0, −X for tab y<0
-        #   fin z (thick)    → rocket ±Y  (tangential)
-        # Apply: swap axes via rotation. Rotate +90° about Y axis so fin x→z.
-        #   After rotation: new_z = old_x, new_x = -old_z (approximately)
-        # Simpler: construct explicit mapping matrix.
-        t = fin
-        # Remap: (x, y, z) -> (y, z, x) i.e. rocket(X,Y,Z) = fin(y, z, x).
-        t = t[:, :, [1, 2, 0]]
-        # Translate fin chord origin (now in Z) to root_z0, and span origin
-        # so root (y=0) aligns with body tube outer surface (rocket X = BT_OD/2).
-        t = t + np.array([R.BT_OD / 2.0, 0.0, root_z0], dtype=np.float32)
-        # Rotate azimuthally.
+        # Remap axes: rocket(X,Y,Z) = fin(y, z, x).
+        t = fin[:, :, [1, 2, 0]].copy()
+        # Flip chord so fin LE (fin_x=0) maps to the highest z (toward nose).
+        t[:, :, 2] = R.FIN_ROOT - t[:, :, 2]
+        # Center fin thickness on the radial plane (y=0 in rocket frame).
+        t[:, :, 1] -= R.FIN_THK / 2.0
+        # Translate: span origin at body tube outer surface (rocket_X=BT_OD/2),
+        # root TE at rocket_Z=SLOT_AFT_OFFSET.
+        t = t + np.array([R.BT_OD / 2.0, 0.0, R.SLOT_AFT_OFFSET],
+                         dtype=np.float32)
+        # Azimuthal placement.
         t = transform(t, rotate_z_deg=i * 90.0)
         parts.append((t, fin_white))
     return parts
@@ -104,7 +94,10 @@ def render(parts, out_path: str, title: str, elev=12, azim=-55, figsize=(7, 10))
     light /= np.linalg.norm(light)
 
     all_pts = []
-    for tris, base in parts:
+    # Body tube is the first part — render it at reduced alpha so the fins
+    # seated in its slots are visible.
+    alphas = [0.75] + [1.0] * (len(parts) - 1)
+    for (tris, base), alpha in zip(parts, alphas):
         v0, v1, v2 = tris[:, 0], tris[:, 1], tris[:, 2]
         normals = np.cross(v1 - v0, v2 - v0)
         lengths = np.linalg.norm(normals, axis=1, keepdims=True)
@@ -112,7 +105,7 @@ def render(parts, out_path: str, title: str, elev=12, azim=-55, figsize=(7, 10))
         normals = normals / lengths
         shade = np.clip(0.4 + 0.7 * (normals @ light), 0.35, 1.0)
         fc = np.clip(base[None, :] * shade[:, None], 0, 1)
-        fc = np.concatenate([fc, np.ones((len(tris), 1), dtype=np.float32)], axis=1)
+        fc = np.concatenate([fc, np.full((len(tris), 1), alpha, dtype=np.float32)], axis=1)
         coll = Poly3DCollection(tris, facecolors=fc, edgecolors="none", linewidths=0)
         ax.add_collection3d(coll)
         all_pts.append(tris.reshape(-1, 3))
